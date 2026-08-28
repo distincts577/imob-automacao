@@ -1,0 +1,32 @@
+{
+  "name": "imob-automacao-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "dev": "node src/server.js",
+    "start": "node src/server.js",
+    "worker": "node src/worker/index.js",
+    "seed": "node prisma/seed.js",
+    "migrate": "prisma migrate dev",
+    "build": "prisma generate && prisma db push --accept-data-loss"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.19.0",
+    "@whiskeysockets/baileys": "^6.7.9",
+    "axios": "^1.7.7",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.4.0",
+    "jsonwebtoken": "^9.0.2",
+    "node-cron": "^3.0.3",
+    "pino": "^9.4.0",
+    "qrcode": "^1.5.4",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "prisma": "^5.19.0"
+  }
+}
