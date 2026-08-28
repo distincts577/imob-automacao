@@ -1,0 +1,67 @@
+# Render Blueprint — sobe a API e o worker de automação a partir do mesmo
+# repositório, ambos no plano free. O banco (Neon) fica de fora deste
+# arquivo porque é externo — você cola a connection string manualmente
+# depois de criar o Blueprint (Render > Environment > escolha "Add from .env"
+# ou preencha campo a campo).
+#
+# Como usar:
+#   1. Suba este repositório no GitHub.
+#   2. No painel do Render: New > Blueprint > selecione o repositório.
+#   3. O Render lê este arquivo e cria os dois serviços abaixo automaticamente.
+#   4. Preencha os campos marcados "sync: false" manualmente no painel
+#      (são segredos que não ficam versionados no repositório).
+
+services:
+  # ---------------------------------------------------------------------
+  # API (Web Service) — recebe requisições do frontend e do webhook do
+  # provedor de WhatsApp.
+  # ---------------------------------------------------------------------
+  - type: web
+    name: imob-automacao-api
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install && npx prisma generate && npx prisma db push --accept-data-loss
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false # cole aqui a connection string "Pooled" da Neon (host com "-pooler")
+      - key: DIRECT_URL
+        sync: false # cole aqui a connection string "Direct" da Neon (host sem "-pooler")
+      - key: JWT_SECRET
+        generateValue: true # o Render gera um valor aleatório forte sozinho
+      - key: JWT_EXPIRES_IN
+        value: 8h
+      - key: CREDENTIALS_ENCRYPTION_KEY
+        generateValue: true
+      - key: FRONTEND_URL
+        sync: false # cole aqui a URL publicada no Vercel/Netlify, ex.: https://seu-projeto.vercel.app
+      - key: APP_URL
+        sync: false # a própria URL pública deste serviço, ex.: https://imob-automacao-api.onrender.com
+
+  # ---------------------------------------------------------------------
+  # Worker — roda em background, separado da API, fazendo a sincronização
+  # com o Vista, o agendamento das automações e o processamento da fila
+  # (seção 20 do escopo: não depende do navegador nem da API estar em uso).
+  # ---------------------------------------------------------------------
+  - type: worker
+    name: imob-automacao-worker
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install && npx prisma generate
+    startCommand: npm run worker
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false # mesma "Pooled connection" da Neon usada na API
+      - key: DIRECT_URL
+        sync: false # mesma "Direct connection" da Neon usada na API
+      - key: CREDENTIALS_ENCRYPTION_KEY
+        sync: false # cole exatamente o mesmo valor gerado no serviço da API — as duas chaves TÊM que ser iguais, senão o worker não consegue descriptografar as credenciais do Vista/WhatsApp
+      - key: APP_URL
+        sync: false
