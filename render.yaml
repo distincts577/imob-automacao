@@ -1,0 +1,58 @@
+# Render Blueprint — sobe a API (que também roda as automações em
+# background, no mesmo processo — ver src/worker/schedules.js) a partir
+# deste repositório, no plano free. O banco (Neon) fica de fora deste
+# arquivo porque é externo — você cola a connection string manualmente
+# depois de criar o Blueprint (Render > Environment > preencha campo a
+# campo).
+#
+# Como usar:
+#   1. Suba este repositório no GitHub.
+#   2. No painel do Render: New > Blueprint > selecione o repositório.
+#   3. O Render lê este arquivo e cria o serviço abaixo automaticamente.
+#   4. Preencha os campos marcados "sync: false" manualmente no painel
+#      (são segredos que não ficam versionados no repositório).
+#
+# Nota sobre o worker: originalmente este projeto tinha um segundo
+# serviço "type: worker" pra rodar a sincronização com o Vista, o
+# agendamento das automações e o processamento da fila. No Render,
+# Background Workers não têm plano free (mínimo é o Starter, pago).
+# Pra manter o projeto 100% gratuito, esses jobs agora rodam com
+# node-cron dentro do próprio processo da API (src/worker/schedules.js).
+# Se um dia a carga crescer e isso passar a atrapalhar o tempo de
+# resposta da API, dá pra voltar a separar: recrie um serviço "type:
+# worker" com startCommand "npm run worker" e defina
+# RUN_WORKER_IN_PROCESS=false nas envs da API.
+
+services:
+  # ---------------------------------------------------------------------
+  # API (Web Service) — recebe requisições do frontend, o webhook do
+  # provedor de WhatsApp, e roda as automações em background no mesmo
+  # processo (cron jobs).
+  # ---------------------------------------------------------------------
+  - type: web
+    name: imob-automacao-api
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install && npx prisma generate && npx prisma db push --accept-data-loss
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false # cole aqui a connection string "Pooled" da Neon (host com "-pooler")
+      - key: DIRECT_URL
+        sync: false # cole aqui a connection string "Direct" da Neon (host sem "-pooler")
+      - key: JWT_SECRET
+        generateValue: true # o Render gera um valor aleatório forte sozinho
+      - key: JWT_EXPIRES_IN
+        value: 8h
+      - key: CREDENTIALS_ENCRYPTION_KEY
+        generateValue: true
+      - key: FRONTEND_URL
+        sync: false # cole aqui a URL publicada no Vercel/Netlify, ex.: https://seu-projeto.vercel.app
+      - key: APP_URL
+        sync: false # a própria URL pública deste serviço, ex.: https://imob-automacao-api.onrender.com
+      - key: RUN_WORKER_IN_PROCESS
+        value: "true" # roda os cron jobs (sync Vista, agendamento, fila) dentro deste processo
