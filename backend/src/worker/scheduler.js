@@ -1,5 +1,5 @@
 const prisma = require('../config/prisma');
-const automationEngine = require('../../services/automationEngine');
+const automationEngine = require('../services/automationEngine');
 
 /**
  * Cria AutomationSequence + ScheduledMessage para clientes elegíveis, de
